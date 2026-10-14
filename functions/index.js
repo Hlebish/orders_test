@@ -251,7 +251,7 @@ exports.sendWarehousePush = onDocumentCreated({ document: 'pushQueue/{eventId}',
   const title = String(data.title || 'Заказы · Склад').slice(0, 120);
   const body = String(data.body || 'Новое изменение в заказе.').slice(0, 500);
   const eventId = event.params.eventId;
-  const siteUrl = 'https://hlebish.github.io/warehouse_orders/';
+  const siteUrl = 'https://hlebish.github.io/orders_test/';
   const orderId = String(data.orderId || '');
   const target = data.target === 'chat' ? 'chat' : 'site';
   const category = ['orders', 'chat', 'replies', 'likes'].includes(data.category) ? data.category : (target === 'chat' ? 'chat' : 'orders');
