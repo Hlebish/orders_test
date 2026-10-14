@@ -2449,3 +2449,34 @@ small,.muted,.hint{font-size:12px}
   input,select,textarea{min-height:42px}
   .chat-message-text{font-size:13px!important}
 }
+
+/* Fix overlapping order-comment cards in the unified chat timeline. */
+.chat-messages>.chat-order-comment{
+  box-sizing:border-box!important;
+  position:relative!important;
+  display:flex!important;
+  flex:0 0 auto!important;
+  align-self:stretch!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  line-height:1.4!important;
+  transform:none!important;
+}
+.chat-messages>.chat-order-comment>span{
+  display:block!important;
+  position:static!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.chat-messages>.chat-order-comment+.chat-order-comment{margin-top:0!important}
+
