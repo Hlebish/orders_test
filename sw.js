@@ -3,8 +3,8 @@ importScripts(
   'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js'
 );
 
-const SITE_URL = 'https://hlebish.github.io/warehouse_orders/';
-const CACHE = 'order-desk-fcm-v60';
+const SITE_URL = 'https://hlebish.github.io/orders_test/';
+const CACHE = 'order-desk-fcm-v61';
 const ASSETS = [
   './',
   './index.html',
