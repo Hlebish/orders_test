@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential, GoogleAuthProvider, signInWithPopup, linkWithCredential } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential, GoogleAuthProvider, signInWithPopup, linkWithCredential, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc, updateDoc, writeBatch, serverTimestamp, query, orderBy, limit, startAfter, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js';
 import { getMessaging, getToken, deleteToken, onMessage } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging.js';
@@ -424,7 +424,7 @@ if(wasFirstEntries&&selectedId===d.id&&!modal.hidden&&modal.dataset.orderDetail=
    if(pendingNotificationOrderId){const target=pendingNotificationOrderId;pendingNotificationOrderId='';history.replaceState({},'',location.pathname+location.hash);if(state.orders.some(o=>o.id===target))openOrder(target);}
  },err=>{console.error(err);toast('Не удалось загрузить общую историю. Проверьте доступ к Firestore.')});
 }
-onAuthStateChanged(auth,user=>{
+setPersistence(auth,browserLocalPersistence).then(()=>onAuthStateChanged(auth,user=>{
  stopCloud();signedInUser=user;initialCloudLoad=true;
  if(!user){function saveUiState(){
   try{
@@ -465,13 +465,25 @@ window.addEventListener('pageshow',e=>{
 });
 
 showAuth();return}
- showAuth('Проверяем доступ…');
+ // Reuse the last verified profile for immediate display on mobile resume/reload.
+ const profileCacheKey='warehouse_orders_profile_'+user.uid;
+ let cachedProfile=null;
+ try{const raw=localStorage.getItem(profileCacheKey);if(raw){const parsed=JSON.parse(raw);if(parsed&&parsed.active===true&&roles[parsed.role])cachedProfile=parsed;}}catch{}
+ if(cachedProfile){
+  state.role=cachedProfile.role;canManageUsers=cachedProfile.admin===true||cachedProfile.role==='director';
+  profileName=cachedProfile.displayName||user.email||roles[cachedProfile.role];
+  state.notificationSettings={chat:cachedProfile.notificationSettings?.chat!==false,replies:cachedProfile.notificationSettings?.replies!==false,likes:cachedProfile.notificationSettings?.likes!==false,orders:cachedProfile.notificationSettings?.orders!==false};
+  state.extraPhoneNotifications=cachedProfile.extraPhoneNotifications===true;
+  $('userName').textContent=profileName;$('userRole').textContent=canManageUsers?`Администратор · ${roles[cachedProfile.role]}`:roles[cachedProfile.role];
+  hideAuth();
+ }else{showAuth('Проверяем доступ…');}
  profileUnsubscribe=onSnapshot(doc(db,'users',user.uid),snap=>{
    if(!snap.exists()){showAuth('Учётная запись создана, но профиль не найден. Обратитесь к администратору.');$('authError').textContent=`UID: ${user.uid}`;return}
-   const profile=snap.data();if(profile.active!==true||!roles[profile.role]){showAuth('Доступ отключён или роль не назначена. Обратитесь к администратору.');return}
+   const profile=snap.data();if(profile.active!==true||!roles[profile.role]){try{localStorage.removeItem(profileCacheKey)}catch{}showAuth('Доступ отключён или роль не назначена. Обратитесь к администратору.');return}
+   try{localStorage.setItem(profileCacheKey,JSON.stringify(profile))}catch{}
    state.role=profile.role;canManageUsers=profile.admin===true||profile.role==='director';profileName=profile.displayName||user.email||roles[profile.role];state.notificationSettings={chat:profile.notificationSettings?.chat!==false,replies:profile.notificationSettings?.replies!==false,likes:profile.notificationSettings?.likes!==false,orders:profile.notificationSettings?.orders!==false};state.extraPhoneNotifications=profile.extraPhoneNotifications===true;$('userName').textContent=profileName;$('userRole').textContent=canManageUsers?`Администратор · ${roles[profile.role]}`:roles[profile.role];hideAuth();watchOrders();watchNotifications();watchChatBadge();render();syncPushToken(false);if(window.AndroidWarehouse?.requestNativePushToken){window.AndroidWarehouse.requestNativePushToken();}if(pendingNotificationChat){pendingNotificationChat=false;history.replaceState({},'',location.pathname+location.hash);setTimeout(()=>openChat(),0);}
  },err=>{console.error(err);showAuth('Не удалось проверить профиль сотрудника. Проверьте правила доступа Firestore.')});
-});
+})).catch(err=>{console.error('Не удалось сохранить вход на этом устройстве',err);showAuth('Браузер не разрешил сохранить вход. Проверьте настройки приватности и хранения данных.');});
  $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('authError').textContent='';try{await signInWithEmailAndPassword(auth,$('loginEmail').value.trim(),$('loginPassword').value)}catch(err){$('authError').textContent=err.code==='auth/invalid-credential'?'Неверная почта или пароль.':err.code==='auth/too-many-requests'?'Слишком много попыток. Попробуйте позже.':'Не удалось войти. Проверьте почту и пароль.'}});
  $('googleLoginButton').addEventListener('click',async()=>{ $('authError').textContent='';try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(err){console.error(err);$('authError').textContent=err.code==='auth/popup-closed-by-user'?'Окно входа закрыто.':'Не удалось войти через Google.'}});
 function initials(name){return String(name).split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()}
